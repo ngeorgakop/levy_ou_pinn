@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 import sys
 import os
 
-# Add parent directory to path to import train module
+# Add parent directory to path to import modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def mock_compute_loss(model, X_r, X_data, u_data, k, theta, sigma, lambda_jump, jump_std):
@@ -15,19 +15,25 @@ def mock_compute_loss(model, X_r, X_data, u_data, k, theta, sigma, lambda_jump, 
 
 def test_training_numerical_consistency():
     """Test that training produces consistent numerical results."""
-    # Mock all the imports before importing train
-    mock_scheduler_config = {'step_size': 4000, 'gamma': 0.5}
-    mock_training_config = {'epochs': 1000, 'lr': 0.001, 'print_interval': 100}
-    
+    # Since training.py now imports STEP_SIZE and GAMMA directly, we must mock them on the config mock.
+    mock_config = MagicMock(
+        STEP_SIZE=4000, 
+        GAMMA=0.5
+    )
+
+    # We mock the entire 'loss' and 'config' modules before importing 'training'
+    # This ensures 'training' gets our mocked versions.
     with patch.dict('sys.modules', {
         'loss': MagicMock(),
-        'config': MagicMock(SCHEDULER_CONFIG=mock_scheduler_config, TRAINING_CONFIG=mock_training_config)
+        'config': mock_config
     }):
-        with patch('builtins.print'):  # Suppress print statements
-            from train import train
+        # We also patch print to avoid cluttering test output
+        with patch('builtins.print'):
+            # Import train function from the correct module
+            from training import train
             
-            # Patch the compute_loss function
-            with patch('train.compute_loss', side_effect=mock_compute_loss):
+            # Now, we patch compute_loss inside the just-imported 'training' module
+            with patch('training.compute_loss', side_effect=mock_compute_loss):
                 # Set random seed for reproducibility
                 torch.manual_seed(42)
                 np.random.seed(42)

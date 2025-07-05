@@ -1,5 +1,6 @@
 import torch
 from integration import compute_levy_integral_trapz
+from config import INTEGRATION_NUM_STEPS, INTEGRATION_WIDTH
 
 
 def fun_r(t, x, k, theta, sigma, model, phi_t, phi_x, phi_xx, lambda_jump, jump_std):
@@ -21,8 +22,8 @@ def fun_r(t, x, k, theta, sigma, model, phi_t, phi_x, phi_xx, lambda_jump, jump_
         model, x, t, 
         lambda_jump=lambda_jump, 
         jump_std=jump_std, 
-        num_steps=100, 
-        integration_width=5.0
+        num_steps=INTEGRATION_NUM_STEPS, 
+        integration_width=INTEGRATION_WIDTH
     )
 
     # Calculate the PDE residual
