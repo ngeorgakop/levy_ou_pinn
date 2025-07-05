@@ -64,3 +64,9 @@ env/
 
 # Databricks
 .databricks
+
+# Generated files
+*.pth
+*.png
+*.txt
+*.csv

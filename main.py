@@ -2,6 +2,8 @@ import torch
 # from . import __version__
 # print(f"Using Lévy-driven OU Process PINN version: {__version__}")
 import matplotlib.pyplot as plt
+import numpy as np
+import csv
 from config import (
     device, k, theta, sigma, lambda_jump, jump_std,
     EPOCHS, LEARNING_RATE, HIDDEN_LAYERS, NEURONS_PER_LAYER,
@@ -33,7 +35,7 @@ def main():
     
     # Train the model
     print(f"\nStarting training for {EPOCHS} epochs...")
-    loss_history = train(
+    training_history = train(
         model, X_r, X_data, u_data, 
         k, theta, sigma, lambda_jump, jump_std, 
         epochs=EPOCHS, lr=LEARNING_RATE
@@ -49,23 +51,42 @@ def main():
     except Exception as e:
         print(f"Error saving model: {e}")
     
-    # Plot training loss
-    print("\nPlotting training loss...")
+    # Extract total loss for plotting
+    total_loss_history = [d['total_loss'] for d in training_history]
+
+    # Plot and save training loss
+    print("\nPlotting and saving training loss...")
     plt.figure(figsize=(10, 6))
-    plt.plot(loss_history)
+    plt.plot(total_loss_history)
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.title("Training Loss for Lévy-Driven OU Process (PINN)")
-    plt.yscale('log')  # Log scale helps visualize loss progression
+    plt.yscale('log')
     plt.grid(True)
-    plt.show()
-    
+    plt.savefig('loss_plot.png')
+    plt.close()
+    print("Loss plot saved to loss_plot.png")
+
+    # Save detailed training history to CSV
+    print("\nSaving detailed training history to CSV...")
+    csv_file = 'training_log.csv'
+    csv_columns = ['epoch', 'total_loss', 'loss_interior', 'loss_terminal', 'loss_boundary', 'lr']
+    try:
+        with open(csv_file, 'w', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
+            writer.writeheader()
+            for data in training_history:
+                writer.writerow(data)
+        print(f"Training history saved to {csv_file}")
+    except IOError:
+        print("I/O error")
+
     # Final loss
-    final_loss = loss_history[-1]
+    final_loss = total_loss_history[-1]
     print(f"\nFinal training loss: {final_loss:.6f}")
     
-    return model, loss_history
+    return model, training_history
 
 
 if __name__ == "__main__":
-    model, loss_history = main() 
+    model, training_history = main() 

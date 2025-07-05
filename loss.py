@@ -39,4 +39,4 @@ def compute_loss(model, X_r, X_data, u_data, k, theta, sigma, lambda_jump, jump_
     # Total loss
     total_loss = loss_interior + loss_terminal + loss_boundary
 
-    return total_loss 
+    return total_loss, loss_interior, loss_terminal, loss_boundary 
