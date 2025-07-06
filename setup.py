@@ -10,6 +10,7 @@ setup(
         "torch>=1.9.0",
         "numpy>=1.21.0",
         "matplotlib>=3.4.0",
+        "plotly>=5.0.0",
     ],
     python_requires=">=3.7",
     classifiers=[
