@@ -36,13 +36,13 @@ K_threshold = 0.0
 # Training configuration parameters
 TRAINING_CONFIG = {
     'epochs': 30000,
-    'lr': 0.005,
+    'lr': 0.003,
     'print_interval': 100
 }
 
 # Scheduler parameters
 SCHEDULER_CONFIG = {
-    'step_size': 4000,
+    'step_size': 2000,
     'gamma': 0.5
 }
 

@@ -70,23 +70,30 @@ def main():
     # Save detailed training history to CSV
     print("\nSaving detailed training history to CSV...")
     csv_file = 'training_log.csv'
-    csv_columns = ['epoch', 'total_loss', 'loss_interior', 'loss_terminal', 'loss_boundary', 'lr']
+    
+    if not training_history:
+        print("Warning: Training history is empty. Cannot save CSV.")
+        return model, training_history
+
+    # Dynamically get headers from the first history entry
+    csv_columns = training_history[0].keys()
+    
     try:
         with open(csv_file, 'w', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
             writer.writeheader()
-            for data in training_history:
-                writer.writerow(data)
+            writer.writerows(training_history)
         print(f"Training history saved to {csv_file}")
-    except IOError:
-        print("I/O error")
+    except IOError as e:
+        print(f"I/O error while writing to {csv_file}: {e}")
 
     # Final loss
-    final_loss = total_loss_history[-1]
-    print(f"\nFinal training loss: {final_loss:.6f}")
+    if total_loss_history:
+        final_loss = total_loss_history[-1]
+        print(f"\nFinal training loss: {final_loss:.6f}")
     
     return model, training_history
 
 
 if __name__ == "__main__":
-    model, training_history = main() 
+    main() 

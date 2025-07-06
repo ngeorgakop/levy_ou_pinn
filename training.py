@@ -30,7 +30,7 @@ def train(model, X_r, X_data, u_data, k, theta, sigma, lambda_jump, jump_std, ep
         optimizer.zero_grad()
         
         # Compute loss
-        total_loss, loss_interior, loss_terminal, loss_boundary = compute_loss(model, X_r, X_data, u_data, k, theta, sigma, lambda_jump, jump_std)
+        total_loss, loss_interior, loss_terminal, loss_boundary, loss_boundary_mc = compute_loss(model, X_r, X_data, u_data, k, theta, sigma, lambda_jump, jump_std)
         
         # Backward pass
         total_loss.backward()
@@ -45,6 +45,7 @@ def train(model, X_r, X_data, u_data, k, theta, sigma, lambda_jump, jump_std, ep
             'loss_interior': loss_interior.item(),
             'loss_terminal': loss_terminal.item(),
             'loss_boundary': loss_boundary.item(),
+            'loss_boundary_mc': loss_boundary_mc.item(),
             'lr': lr_current
         })
         

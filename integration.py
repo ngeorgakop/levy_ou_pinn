@@ -125,4 +125,60 @@ def compute_levy_integral_trapz(model, x, t, lambda_jump=1.0, jump_std=0.2, num_
     # 8. Multiply by lambda and ensure correct output shape.
     result = lambda_jump * integral_val.unsqueeze(-1)  # Shape: [batch_size, 1]
 
-    return result 
+    return result
+
+
+def simulate_ou_paths(start_x, start_t, k, theta, sigma, K_threshold,
+                        t_max=1.0, num_sims=1000, num_steps=100):
+    """
+    Simulates Ornstein-Uhlenbeck paths to estimate default probability.
+
+    Estimates P(inf_{s>t} X_s <= K | X_t = x) via Monte Carlo.
+
+    Args:
+        start_x (torch.Tensor): Starting x positions. Shape [N, 1].
+        start_t (torch.Tensor): Starting t positions. Shape [N, 1].
+        k, theta, sigma (float): OU process parameters.
+        K_threshold (float): Default threshold.
+        t_max (float): End time of the simulation.
+        num_sims (int): Number of Monte Carlo simulations per starting point.
+        num_steps (int): Number of time steps in each simulation path.
+
+    Returns:
+        torch.Tensor: Estimated default probabilities. Shape [N, 1].
+    """
+    batch_size = start_x.shape[0]
+    if batch_size == 0:
+        return torch.empty(0, 1, device=start_x.device, dtype=DTYPE)
+
+    # Time steps are different for each starting time
+    dt = (t_max - start_t) / num_steps  # Shape: [N, 1]
+    dt_expanded = dt.unsqueeze(1).expand(-1, num_sims, -1) # Shape: [N, num_sims, 1]
+
+    # Initialize paths at their starting values
+    X_t = start_x.unsqueeze(1).expand(-1, num_sims, -1)  # Shape: [N, num_sims, 1]
+
+    # Keep track of which paths have already defaulted
+    defaulted = torch.zeros_like(X_t, dtype=torch.bool) # Shape: [N, num_sims, 1]
+
+    # Euler-Maruyama method for SDE simulation
+    for _ in range(num_steps):
+        # Generate random noise for this step
+        dW = torch.randn_like(X_t) * torch.sqrt(dt_expanded)
+
+        # Update paths that have not yet defaulted
+        # dX = k * (theta - X_t) * dt + sigma * dW
+        dX = k * (theta - X_t) * dt_expanded + sigma * dW
+
+        # Apply update only to non-defaulted paths
+        X_t = torch.where(defaulted, X_t, X_t + dX)
+
+        # Check for new defaults in this step
+        newly_defaulted = (X_t <= K_threshold)
+        defaulted = torch.logical_or(defaulted, newly_defaulted)
+
+    # The probability is the fraction of paths that have defaulted at any point
+    # Summing booleans gives the count of True values
+    default_prob = torch.sum(defaulted, dim=1, dtype=DTYPE) / num_sims
+
+    return default_prob 
