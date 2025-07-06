@@ -6,6 +6,7 @@ setup(
     description="Physics-Informed Neural Network for Lévy-driven Ornstein-Uhlenbeck Process",
     author="Generated from Notebook",
     packages=find_packages(),
+    py_modules=["config"],
     install_requires=[
         "torch>=1.9.0",
         "numpy>=1.21.0",
