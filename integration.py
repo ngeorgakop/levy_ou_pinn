@@ -1,6 +1,6 @@
 import torch
 import math
-from config import DTYPE, device
+from config import DTYPE, device, lambda_jump, jump_std
 
 
 def compute_levy_integral_mc(model, x, t, lambda_jump=1.0, jump_std=0.2, num_samples=1000):
@@ -129,23 +129,28 @@ def compute_levy_integral_trapz(model, x, t, lambda_jump=1.0, jump_std=0.2, num_
 
 
 def simulate_ou_paths(start_x, start_t, k, theta, sigma, K_threshold,
-                        t_max=1.0, num_sims=1000, num_steps=100):
+                        t_max=1.0, num_sims=5000, num_steps=100):
     """
-    Simulates Ornstein-Uhlenbeck paths to estimate default probability.
+    Simulates Ornstein-Uhlenbeck paths with jumps to estimate terminal probability.
 
-    Estimates P(inf_{s>t} X_s <= K | X_t = x) via Monte Carlo.
+    Estimates P(X_T <= K | X_t = x) via Monte Carlo for a jump-diffusion process.
+    The process is dX_t = k * (theta - X_t)dt + sigma * dW_t + dJ_t,
+    where J_t is a compound Poisson process with intensity lambda_jump and normal jumps N(0, jump_std^2).
+
+    This function computes the probability that the process is below the threshold at the FINAL time T,
+    not the first passage time probability.
 
     Args:
         start_x (torch.Tensor): Starting x positions. Shape [N, 1].
         start_t (torch.Tensor): Starting t positions. Shape [N, 1].
         k, theta, sigma (float): OU process parameters.
-        K_threshold (float): Default threshold.
+        K_threshold (float): Terminal threshold.
         t_max (float): End time of the simulation.
         num_sims (int): Number of Monte Carlo simulations per starting point.
         num_steps (int): Number of time steps in each simulation path.
 
     Returns:
-        torch.Tensor: Estimated default probabilities. Shape [N, 1].
+        torch.Tensor: Estimated terminal probabilities P(X_T <= K). Shape [N, 1].
     """
     batch_size = start_x.shape[0]
     if batch_size == 0:
@@ -158,27 +163,25 @@ def simulate_ou_paths(start_x, start_t, k, theta, sigma, K_threshold,
     # Initialize paths at their starting values
     X_t = start_x.unsqueeze(1).expand(-1, num_sims, -1)  # Shape: [N, num_sims, 1]
 
-    # Keep track of which paths have already defaulted
-    defaulted = torch.zeros_like(X_t, dtype=torch.bool) # Shape: [N, num_sims, 1]
-
     # Euler-Maruyama method for SDE simulation
     for _ in range(num_steps):
-        # Generate random noise for this step
+        # Generate random noise for this step (Brownian motion)
         dW = torch.randn_like(X_t) * torch.sqrt(dt_expanded)
 
-        # Update paths that have not yet defaulted
-        # dX = k * (theta - X_t) * dt + sigma * dW
-        dX = k * (theta - X_t) * dt_expanded + sigma * dW
+        # Generate jumps for this step (Compound Poisson process)
+        # 1. Number of jumps in dt follows a Poisson distribution
+        num_jumps = torch.poisson(lambda_jump * dt_expanded)
+        # 2. Total jump size is sum of N(0, jump_std^2) random variables
+        jump_sizes = torch.randn_like(X_t) * jump_std * torch.sqrt(num_jumps)
 
-        # Apply update only to non-defaulted paths
-        X_t = torch.where(defaulted, X_t, X_t + dX)
+        # Update paths with OU dynamics and jumps
+        # dX = k * (theta - X_t) * dt + sigma * dW + dJ
+        dX = k * (theta - X_t) * dt_expanded + sigma * dW + jump_sizes
+        X_t = X_t + dX
 
-        # Check for new defaults in this step
-        newly_defaulted = (X_t <= K_threshold)
-        defaulted = torch.logical_or(defaulted, newly_defaulted)
+    # Check final state: probability that X_T <= K_threshold
+    # Only care about the final value, not whether threshold was hit during simulation
+    final_below_threshold = (X_t <= K_threshold)
+    terminal_prob = torch.sum(final_below_threshold, dim=1, dtype=DTYPE) / num_sims
 
-    # The probability is the fraction of paths that have defaulted at any point
-    # Summing booleans gives the count of True values
-    default_prob = torch.sum(defaulted, dim=1, dtype=DTYPE) / num_sims
-
-    return default_prob 
+    return terminal_prob 

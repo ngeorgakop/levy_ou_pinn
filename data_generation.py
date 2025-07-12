@@ -2,7 +2,7 @@ import torch
 
 from config import (
     DTYPE, device, tmin, tmax, xmin, xmax, 
-    N_T, N_b, N_r, K_threshold, lb, ub
+    N_T, N_b, N_r, K_threshold, lb, ub, N_mc
 )
 
 
@@ -18,7 +18,7 @@ def generate_training_data():
             - u_data: List of [terminal_targets, boundary_targets]
     """
     print(f"Domain: t in [{tmin}, {tmax}], x in [{xmin}, {xmax}]")
-    print(f"Points: N_T={N_T}, N_b={N_b}, N_r={N_r}")
+    print(f"Points: N_T={N_T}, N_b={N_b}, N_r={N_r}, N_mc={N_mc}")
     print(f"Default Threshold K = {K_threshold}")
     
     # --- 1. Terminal Condition points (t=tmax) ---
@@ -71,6 +71,12 @@ def generate_training_data():
     X_r.requires_grad_(True)
     
     print(f"Generated X_r shape: {X_r.shape}")
+
+    # --- 4. Monte Carlo anchor points (interior) ---
+    t_mc = torch.rand((N_mc, 1), dtype=DTYPE, device=device) * (ub[0] - lb[0]) + lb[0]
+    x_mc = torch.rand((N_mc, 1), dtype=DTYPE, device=device) * (ub[1] - lb[1]) + lb[1]
+    X_mc = torch.cat([t_mc, x_mc], dim=1)
+    print(f"Generated X_mc shape: {X_mc.shape}")
     
     # --- Combine data lists for training ---
     X_data = [X_T, X_b]  # Terminal and Boundary coordinate tensors
@@ -80,5 +86,6 @@ def generate_training_data():
     print(f"X_data contains {len(X_data)} tensors (Terminal, Boundary)")
     print(f"u_data contains {len(u_data)} tensors (Terminal Targets, Boundary Targets)")
     print(f"X_r tensor shape: {X_r.shape} (Residual Points)")
+    print(f"X_mc tensor shape: {X_mc.shape} (Monte Carlo Points)")
     
-    return X_r, X_data, u_data 
+    return X_r, X_data, u_data, X_mc 

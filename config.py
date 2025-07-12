@@ -27,7 +27,8 @@ DOMAIN_CONFIG = {
 POINTS_CONFIG = {
     'N_T': 500,    # Number of terminal condition points
     'N_b': 500,    # Number of boundary condition points
-    'N_r': 15000   # Number of residual points
+    'N_r': 15000,   # Number of residual points
+    'N_mc': 1000    # Number of Monte Carlo anchor points
 }
 
 # PD probability threshold
@@ -35,15 +36,11 @@ K_threshold = 0.0
 
 # Training configuration parameters
 TRAINING_CONFIG = {
-    'epochs': 30000,
-    'lr': 0.003,
-    'print_interval': 100
-}
-
-# Scheduler parameters
-SCHEDULER_CONFIG = {
-    'step_size': 2000,
-    'gamma': 0.5
+    'epochs': 40000,
+    'lr': 0.0002,
+    'print_interval': 100,
+    'mc_recalc_interval': None,  # Disable MC target recalculation during training
+    'early_stop_threshold': 0.000099  # Stop training when loss sum goes below this
 }
 
 # Neural network architecture
@@ -73,13 +70,13 @@ xmax = DOMAIN_CONFIG['xmax']
 N_T = POINTS_CONFIG['N_T']
 N_b = POINTS_CONFIG['N_b']
 N_r = POINTS_CONFIG['N_r']
+N_mc = POINTS_CONFIG['N_mc']
 
 EPOCHS = TRAINING_CONFIG['epochs']
 LEARNING_RATE = TRAINING_CONFIG['lr']
 PRINT_INTERVAL = TRAINING_CONFIG['print_interval']
-
-STEP_SIZE = SCHEDULER_CONFIG['step_size']
-GAMMA = SCHEDULER_CONFIG['gamma']
+MC_RECALC_INTERVAL = TRAINING_CONFIG['mc_recalc_interval']
+EARLY_STOP_THRESHOLD = TRAINING_CONFIG['early_stop_threshold']
 
 HIDDEN_LAYERS = NN_CONFIG['hidden_layers']
 NEURONS_PER_LAYER = NN_CONFIG['neurons_per_layer']
