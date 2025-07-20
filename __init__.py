@@ -5,7 +5,7 @@ This package implements a PINN for solving the Lévy-driven OU process PDE.
 """
 
 from .model import OU_PINN
-from .data_generation import generate_training_data
+from .data_generation import generate_training_data, get_training_data, save_training_data, load_training_data
 from .training import train
 from .loss import compute_loss
 from .residual import get_r, fun_r
@@ -16,7 +16,10 @@ __author__ = "Generated from Notebook"
 
 __all__ = [
     "OU_PINN",
-    "generate_training_data", 
+    "generate_training_data",
+    "get_training_data",
+    "save_training_data", 
+    "load_training_data",
     "train",
     "compute_loss",
     "get_r",

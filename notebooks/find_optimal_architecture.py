@@ -7,9 +7,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import torch
 import time
 from model import OU_PINN
-from data_generation import generate_training_data
+from data_generation import get_training_data
 from training import train
-from config import device, k, theta, sigma, lambda_jump, jump_std, LEARNING_RATE
+from integration import simulate_ou_paths
+from config import device, k, theta, sigma, lambda_jump, jump_std, LEARNING_RATE, K_threshold
 
 # --- Configuration for the architecture search ---
 
@@ -41,7 +42,7 @@ def find_best_architecture():
 
     # Generate a single, consistent dataset for all runs
     print("\\nGenerating a consistent training dataset...")
-    X_r, X_data, u_data = generate_training_data()
+    X_r, X_data, u_data, X_mc = get_training_data(use_saved_data=False, save_generated_data=False)
     print("Dataset generated successfully.")
 
     results = []
@@ -60,11 +61,19 @@ def find_best_architecture():
 
         start_time = time.time()
 
+        # Pre-calculate Monte Carlo targets for the anchor points
+        u_mc_targets = simulate_ou_paths(
+            start_x=X_mc[:, 1:2],
+            start_t=X_mc[:, 0:1],
+            k=k, theta=theta, sigma=sigma,
+            K_threshold=K_threshold
+        )
+
         # Train the model
         # Note: The 'train' function prints its own progress.
         training_history = train(
-            model, X_r, X_data, u_data,
-            k, theta, sigma, lambda_jump, jump_std,
+            model, X_r, X_data, u_data, X_mc, u_mc_targets,
+            k, theta, sigma, lambda_jump, jump_std, K_threshold,
             epochs=EPOCHS_PER_RUN, lr=LEARNING_RATE
         )
 

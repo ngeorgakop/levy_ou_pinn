@@ -43,6 +43,13 @@ TRAINING_CONFIG = {
     'early_stop_threshold': 0.000099  # Stop training when loss sum goes below this
 }
 
+# Data management configuration
+DATA_CONFIG = {
+    'use_saved_data': True,      # If True, try to load from saved files first
+    'save_generated_data': False,  # If True, save newly generated data to files
+    'data_dir': 'data'           # Directory for saving/loading training data
+}
+
 # Neural network architecture
 NN_CONFIG = {
     'hidden_layers': 6,
@@ -77,6 +84,10 @@ LEARNING_RATE = TRAINING_CONFIG['lr']
 PRINT_INTERVAL = TRAINING_CONFIG['print_interval']
 MC_RECALC_INTERVAL = TRAINING_CONFIG['mc_recalc_interval']
 EARLY_STOP_THRESHOLD = TRAINING_CONFIG['early_stop_threshold']
+
+USE_SAVED_DATA = DATA_CONFIG['use_saved_data']
+SAVE_GENERATED_DATA = DATA_CONFIG['save_generated_data']
+DATA_DIR = DATA_CONFIG['data_dir']
 
 HIDDEN_LAYERS = NN_CONFIG['hidden_layers']
 NEURONS_PER_LAYER = NN_CONFIG['neurons_per_layer']

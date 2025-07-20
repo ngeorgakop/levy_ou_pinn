@@ -8,10 +8,10 @@ from config import (
     device, k, theta, sigma, lambda_jump, jump_std,
     EPOCHS, LEARNING_RATE, HIDDEN_LAYERS, NEURONS_PER_LAYER,
     MODEL_PATH, N_r, K_threshold, lb, ub, N_mc, MC_RECALC_INTERVAL,
-    EARLY_STOP_THRESHOLD
+    EARLY_STOP_THRESHOLD, USE_SAVED_DATA, SAVE_GENERATED_DATA, DATA_DIR
 )
 from model import OU_PINN
-from data_generation import generate_training_data
+from data_generation import get_training_data
 from training import train
 from integration import simulate_ou_paths
 
@@ -23,9 +23,13 @@ def main():
     print("Starting Lévy-driven OU Process PINN Training")
     print("=" * 50)
     
-    # Generate training data
-    print("\nGenerating training data...")
-    X_r, X_data, u_data, X_mc = generate_training_data()
+    # Get training data (load from file or generate)
+    print("\nGetting training data...")
+    X_r, X_data, u_data, X_mc = get_training_data(
+        use_saved_data=USE_SAVED_DATA,
+        data_dir=DATA_DIR,
+        save_generated_data=SAVE_GENERATED_DATA
+    )
 
     # Pre-calculate Monte Carlo targets for the anchor points
     print("\nPre-calculating Monte Carlo targets for anchor points...")
