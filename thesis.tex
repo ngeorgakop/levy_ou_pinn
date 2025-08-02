@@ -523,18 +523,18 @@ In most structural models employing Lévy processes, default is defined using a 
 \[ \tau = \inf\{t \ge 0 : V_t \le K\} \]
 The barrier $K$ is often assumed constant, representing the face value of debt or some critical operational threshold, but can also be modeled as time-dependent or even stochastic.
 
-The central quantity of interest is the probability of default by time $t$, given the information at time 0 (including the initial asset value $V_0 = x > K$):
-\[ \text{PD}(x, t) = P(\tau \le t | V_0 = x) \]
-Calculating this first hitting time probability for a general Lévy process is significantly more challenging than for Brownian motion due to the presence of jumps. The process can jump over the barrier, landing strictly below $K$ at the time of default. Analytical closed-form solutions for $\text{PD}(x, t)$ are typically unavailable except in very specific cases.
+The central quantity of interest is the probability of default between time $t$ and maturity $T$, given the current asset value $V_t = x > K$:
+\[ \text{PD}(x, t, T) = P(\min_{s \in [t,T]} V_s \le K | V_t = x) \]
+Calculating this first hitting time probability for a general Lévy process is significantly more challenging than for Brownian motion due to the presence of jumps. The process can jump over the barrier, landing strictly below $K$ at the time of default. Analytical closed-form solutions for $\text{PD}(x, t, T)$ are typically unavailable except in very specific cases.
 
 Several approaches are used to compute or approximate the PD:
 \begin{itemize}
-    \item \textbf{Partial Integro-Differential Equations (PIDEs):} The probability of default $\Phi(x, t) = P(\tau \le t | V_0 = x) = \text{PD}(x, t)$ often satisfies a PIDE related to the infinitesimal generator of the underlying Lévy process (or Lévy-driven OU process) governing $V_t$ or $\ln V_t$. For a process $X_t = \ln(V_t / K)$ with generator $\mathcal{L}$, the PIDE for the probability of default $\Phi(x, t)$ (where $x = \ln(V_0 / K) > 0$ and default occurs when $X_t \le 0$) typically takes the form: $\frac{\partial \Phi}{\partial t} = -\mathcal{L} \Phi$ subject to boundary conditions $\Phi(x, t) = 0$ for $x \le 0$ (defaulted state) and initial condition $\Phi(x, 0) = 1$ for $x > 0$. The generator $\mathcal{L}$ includes drift, diffusion, and integral terms reflecting the Lévy triplet $(a, \sigma^2, \nu)$.
+    \item \textbf{Partial Integro-Differential Equations (PIDEs):} The probability of default $\Phi(x, t, T) = P(\min_{s \in [t,T]} V_s \le K | V_t = x) = \text{PD}(x, t, T)$ often satisfies a PIDE related to the infinitesimal generator of the underlying Lévy process (or Lévy-driven OU process) governing $V_t$ or $\ln V_t$. For a process $X_t = \ln(V_t / K)$ with generator $\mathcal{L}$, the PIDE for the probability of default $\Phi(x, t, T)$ (where $x = \ln(V_t / K) > 0$ and default occurs when $X_s \le 0$ for some $s \in [t,T]$) typically takes the form: $\frac{\partial \Phi}{\partial t} + \mathcal{L} \Phi = 0$ subject to boundary conditions $\Phi(0, t, T) = 1$ (certain default at barrier) and terminal condition $\Phi(x, T, T) = \mathbf{1}_{x \le 0}$ (default only if already at barrier at maturity). The generator $\mathcal{L}$ includes drift, diffusion, and integral terms reflecting the Lévy triplet $(a, \sigma^2, \nu)$.
     These PIDEs rarely have analytical solutions and must be solved numerically, often using finite difference methods (e.g., implicit schemes like Crank-Nicolson or specialized methods for the integral term).
 
     \item \textbf{Transform Methods (Fourier/Laplace):} For certain Lévy processes and barrier types (especially constant barriers), techniques involving Laplace transforms (in time) and Fourier transforms (in space) can sometimes be applied to the PIDE or related equations (like the Wiener-Hopf factorization) to obtain semi-analytical expressions for the distribution of the first passage time $\tau$ or its Laplace transform $E[e^{-q\tau}]$. These methods often require numerical inversion of the resulting transforms to get the PD.
 
-    \item \textbf{Monte Carlo Simulation:} This involves simulating a large number of sample paths of the asset value process $V_t$ according to its Lévy dynamics. The probability $\text{PD}(x, t)$ is then estimated as the fraction of simulated paths that hit or cross the barrier $K$ at or before time $t$. While conceptually straightforward, Monte Carlo can be computationally intensive, especially for low default probabilities or complex Lévy processes.
+    \item \textbf{Monte Carlo Simulation:} This involves simulating a large number of sample paths of the asset value process $V_t$ according to its Lévy dynamics. The probability $\text{PD}(x, t, T)$ is then estimated as the fraction of simulated paths that hit or cross the barrier $K$ between time $t$ and maturity $T$. While conceptually straightforward, Monte Carlo can be computationally intensive, especially for low default probabilities or complex Lévy processes.
 \end{itemize}
 The choice of the specific Lévy process (e.g., jump-diffusion, VG, NIG, Lévy-OU) significantly impacts the resulting PD term structure, the implied credit spreads, and the model's ability to fit market data. While structural models offer strong economic intuition, their calibration to market instruments like CDS can be challenging due to the need to estimate parameters of the unobservable asset value process $V_t$. The increased flexibility afforded by Lévy processes helps bridge the gap between theoretical intuition and empirical fit, but this comes at the price of increased mathematical complexity and computational cost for PD calculation compared to simpler diffusion models.
 
@@ -569,9 +569,10 @@ The implementation of IFRS 9 necessitates forward-looking credit loss estimation
 We model the evolution of a debtor's asset value, $G_t$, using stochastic processes. Default occurs if $G_t$ falls below a certain threshold (typically 0). We focus on the probability of default, $\Phi$, defined as the probability that the process defaults within a given time horizon.
 
 \subsection{The Probability of Default Function}
-Assuming time homogeneity in the underlying process dynamics allows us to define the probability of default primarily as a function of the initial asset value $x$ and the time horizon (time until maturity) $u$:
-$$ \Phi(x, \dots, u) = P\left( \inf_{r \le u} G_r \le 0 | G_0 = x, \dots \right) $$
-where `...` represents potential initial states of other latent variables driving the process.
+Assuming time homogeneity in the underlying process dynamics allows us to define the probability of default primarily as a function of the current asset value $x$ and the time horizon (time until maturity) $u$:
+$$ \Phi(x, \dots, u) = P\left( \inf_{r \in [0, u]} G_r \le 0 | G_0 = x, \dots \right) $$
+where `...` represents potential initial states of other latent variables driving the process. More generally, for any current time $t$ with asset value $G_t = x$, this represents:
+$$ \Phi(x, t, T) = P\left( \inf_{r \in [t, T]} G_r \le 0 | G_t = x, \dots \right) $$
 
 \subsection{Asset Value Models}
 We consider asset dynamics based on the Ornstein-Uhlenbeck (OU) process, extended to include jumps (Lévy process) to capture sudden changes common in credit events.
@@ -688,13 +689,13 @@ The computed probability of default $\Phi$ is crucial for IFRS 9 provisioning.
 \subsection{Stage 1 Provisions}
 Based on 1-period ahead Expected Loss (EL):
 $$ EL = EAD \times LGD \times PD_{1yr} $$
-where $PD_{1yr} = \Phi(x, \dots, 1)$ is calculated from the model.
+where $PD_{1yr} = \Phi(x, 0, 1)$ is calculated from the model (probability of default within the next year).
 
 \subsection{Stage 2 Provisions (Lifetime ECL)}
 Requires summing discounted expected losses over the remaining life $T$ of the asset:
 $$ ECL_t = \sum_{i=t+1}^{T} \frac{E[EAD_i \times LGD_i \times PDPiT_i | \mathcal{F}_t]}{(1+r_i)^{i-t}} $$
-where $PDPiT_i$ is the Point-in-Time PD for period $i$. This is calculated from the default probability function as the probability of defaulting exactly in period $i$, given no default until $i-1$:
-$$ PDPiT_i = \Phi(x, \dots, i) - \Phi(x, \dots, i-1) \quad (4.32 \text{ adapted}) $$
+where $PDPiT_i$ is the Point-in-Time PD for period $i$. This is calculated from the default probability function as the marginal probability of defaulting in period $i$:
+$$ PDPiT_i = \Phi(x, i-1, i) \quad (4.32 \text{ adapted}) $$
 
 
 \subsection{Scenario Analysis & Other Uses}
@@ -1015,7 +1016,7 @@ The experiment is designed to train a PINN to approximate the probability of def
 
 The PINN is trained to satisfy the governing PIDE derived from the Lévy-driven OU process. Based on the implementation's definition of the residual calculation, the target PIDE residual to be minimized is:
 $$
-\mathcal{R}(t, x; \phi) := \frac{\partial \phi}{\partial t} - \left( k(\theta - x)\frac{\partial \phi}{\partial x} + \frac{1}{2}\sigma^2 \frac{\partial^2 \phi}{\partial x^2} + \lambda \mathbb{E}_Z[\phi(t, x+Z) - \phi(t, x)] \right)
+\mathcal{R}(t, x; \phi) := \frac{\partial \phi}{\partial t} + k(\theta - x)\frac{\partial \phi}{\partial x} + \frac{1}{2}\sigma^2 \frac{\partial^2 \phi}{\partial x^2} + \lambda \mathbb{E}_Z[\phi(t, x+Z) - \phi(t, x)]
 $$
 where $Z \sim \mathcal{N}(0, \sigma_{jump}^2)$ and the expectation is approximated using the Monte Carlo method described in Section \ref{sec:mc_background}. The goal of the PINN training is to enforce $\mathcal{R}(t, x; \phi_{NN}) \approx 0$ for points $(t, x)$ within the domain, where $\phi_{NN}$ is the neural network approximation.
 
@@ -1041,7 +1042,7 @@ The Physics-Informed Neural Network (PINN) is trained by minimizing a loss funct
 
 The governing Partial Integro-Differential Equation (PIDE) for $\phi(t,x)$ can vary in its exact form. For clarity, we define the PIDE residual operator, $\mathcal{N}[\hat{\phi}]$, directly based on the implementation used in this work:
 $$
-\mathcal{N}[\hat{\phi}(t,x; \mathbf{\Theta})] := \frac{\partial \hat{\phi}}{\partial t} - k(\theta - x) \frac{\partial \hat{\phi}}{\partial x} - \frac{1}{2}\sigma^2 \frac{\partial^2 \hat{\phi}}{\partial x^2} - \lambda \mathbb{E}_{Z \sim \mathcal{N}(0,\sigma_J^2)}[\hat{\phi}(t, x+Z; \mathbf{\Theta}) - \hat{\phi}(t, x; \mathbf{\Theta})]
+\mathcal{N}[\hat{\phi}(t,x; \mathbf{\Theta})] := \frac{\partial \hat{\phi}}{\partial t} + k(\theta - x) \frac{\partial \hat{\phi}}{\partial x} + \frac{1}{2}\sigma^2 \frac{\partial^2 \hat{\phi}}{\partial x^2} + \lambda \mathbb{E}_{Z \sim \mathcal{N}(0,\sigma_J^2)}[\hat{\phi}(t, x+Z; \mathbf{\Theta}) - \hat{\phi}(t, x; \mathbf{\Theta})]
 $$
 where:
 \begin{itemize}
@@ -1055,7 +1056,7 @@ where:
 
 The expectation term for the jumps, $I(t,x;\hat{\phi}) = \lambda \mathbb{E}_{Z \sim \mathcal{N}(0,\sigma_J^2)}[\hat{\phi}(t, x+Z; \mathbf{\Theta}) - \hat{\phi}(t, x; \mathbf{\Theta})]$, is approximated using Monte Carlo integration with $N_s$ samples as described above.
 
-The total loss function $\mathcal{L}(\mathbf{\Theta})$ is composed of three distinct terms: the loss from the PIDE residual at interior points, the loss from the terminal condition, and the loss from the spatial boundary conditions.
+The total loss function $\mathcal{L}(\mathbf{\Theta})$ is composed of four distinct terms: the loss from the PIDE residual at interior points, the loss from the terminal condition, the loss from the spatial boundary conditions, and the loss from Monte Carlo anchor points.
 
 \paragraph{1. Interior Loss ($\mathcal{L}_{\text{int}}$)} This component enforces the PIDE over a set of $N_{\text{int}}$ collocation points $\{ (t_i^{\text{int}}, x_i^{\text{int}}) \}_{i=1}^{N_{\text{int}}}$ sampled from the interior of the domain $(0, T) \times (X_{\text{min}}, X_{\text{max}})$. It is defined as the mean squared residual:
 $$
@@ -1072,20 +1073,26 @@ $$
 \mathcal{L}_{\text{bound}}(\mathbf{\Theta}) = \frac{1}{N_{\text{bound}}} \sum_{k=1}^{N_{\text{bound}}} \left| \hat{\phi}(t_k^{\text{bound}}, x_k^{\text{bound}}; \mathbf{\Theta}) - h(t_k^{\text{bound}}, x_k^{\text{bound}}) \right|^2
 $$
 
+\paragraph{4. Monte Carlo Anchor Point Loss ($\mathcal{L}_{\text{mc}}$)} This component uses pre-computed Monte Carlo simulations to provide additional training targets at specific anchor points. Given a set of $N_{\text{mc}}$ Monte Carlo anchor points $\{ (t_l^{\text{mc}}, x_l^{\text{mc}}) \}_{l=1}^{N_{\text{mc}}}$ with corresponding pre-calculated target values $u_l^{\text{mc}}$ obtained from direct simulation:
+$$
+\mathcal{L}_{\text{mc}}(\mathbf{\Theta}) = \frac{1}{N_{\text{mc}}} \sum_{l=1}^{N_{\text{mc}}} \left| \hat{\phi}(t_l^{\text{mc}}, x_l^{\text{mc}}; \mathbf{\Theta}) - u_l^{\text{mc}} \right|^2
+$$
+
 The \textbf{Total Loss Function} optimized during the training process is the sum of these individual loss components:
 $$
-\mathcal{L}(\mathbf{\Theta}) = \mathcal{L}_{\text{int}}(\mathbf{\Theta}) + \mathcal{L}_{\text{term}}(\mathbf{\Theta}) + \mathcal{L}_{\text{bound}}(\mathbf{\Theta})
+\mathcal{L}(\mathbf{\Theta}) = \mathcal{L}_{\text{int}}(\mathbf{\Theta}) + \mathcal{L}_{\text{term}}(\mathbf{\Theta}) + \mathcal{L}_{\text{bound}}(\mathbf{\Theta}) + \mathcal{L}_{\text{mc}}(\mathbf{\Theta})
 $$
-Optionally, weights $\alpha_{\text{int}}, \alpha_{\text{term}}, \alpha_{\text{bound}}$ could be introduced to balance the contribution of each term, but they are set to unity in the current implementation. Minimizing $\mathcal{L}(\mathbf{\Theta})$ with respect to the network parameters $\mathbf{\Theta}$ drives the neural network $\hat{\phi}$ to approximate the true solution of the PIDE while satisfying the given terminal and boundary conditions.
+All loss components are weighted equally (unit weights) in the current implementation. Minimizing $\mathcal{L}(\mathbf{\Theta})$ with respect to the network parameters $\mathbf{\Theta}$ drives the neural network $\hat{\phi}$ to approximate the true solution of the PIDE while satisfying the given terminal and boundary conditions and matching the Monte Carlo reference solutions.
 
 \subsection{Training Data Generation}
 \label{subsec:data_gen}
 
-Three sets of points are generated for training:
+Four sets of points are generated for training:
 \begin{enumerate}
-    \item \textbf{Residual Points:} $N_r = 20000$ collocation points are sampled uniformly from the spatio-temporal domain $[t_{min}, t_{max}] \times [x_{min}, x_{max}]$. These points are used to compute $\mathcal{L}_r$. Gradients are required for these points.
-    \item \textbf{Terminal Condition Points:} $N_T = 500$ points are generated at the terminal time $t=t_{max}$. The spatial coordinates $x$ are chosen as linearly spaced values between $x_{min}$ and $x_{max}$ to ensure coverage across the terminal boundary. The corresponding target values are set to 1 if $x <= K$ and 0 otherwise.
-    \item \textbf{Boundary Condition Points:} $N_b = 500$ points are generated. Time coordinates $t$ are sampled uniformly from $[t_{min}, t_{max}]$. Half of the points ($N_b/2$) are assigned the spatial coordinate $x=x_{min}$ with a target value of 0, and the other half are assigned $x=x_{max}$ with a target value of 1. The points are shuffled to mix boundary conditions during batch processing.
+    \item \textbf{Residual Points:} $N_r = 15000$ collocation points are sampled uniformly from the spatio-temporal domain $[t_{min}, t_{max}] \times [x_{min}, x_{max}]$. These points are used to compute $\mathcal{L}_{\text{int}}$. Gradients are required for these points.
+    \item \textbf{Terminal Condition Points:} $N_T = 500$ points are generated at the terminal time $t=t_{max}$. The spatial coordinates $x$ are chosen as linearly spaced values between $x_{min}$ and $x_{max}$ to ensure coverage across the terminal boundary. The corresponding target values are set to 1 if $x \le K$ and 0 otherwise.
+    \item \textbf{Boundary Condition Points:} $N_b = 500$ points are generated. Time coordinates $t$ are sampled uniformly from $[t_{min}, t_{max}]$. Half of the points ($N_b/2$) are assigned the spatial coordinate $x=x_{min}$ with a target value of 1, and the other half are assigned $x=x_{max}$ with a target value of 0. The points are shuffled to mix boundary conditions during batch processing.
+    \item \textbf{Monte Carlo Anchor Points:} $N_{mc} = 1000$ points are generated by sampling from the spatio-temporal domain. For each point $(t,x)$, the target value is computed using direct Monte Carlo simulation of the Lévy-driven OU process to estimate the true probability of default. These provide additional supervision to guide the neural network training.
 \end{enumerate}
 
 \section{Simulation Parameters}
@@ -1114,29 +1121,32 @@ The specific parameters used in the numerical experiment are summarized below:
 \midrule
 \multicolumn{2}{l}{\textit{Domain Boundaries}} \\
 \quad Time Interval ($[t_{\text{min}}, t_{\text{max}}]$) & $[0.0, 1.0]$ \\
-\quad Spatial Interval ($[x_{\text{min}}, x_{\text{max}}]$) & $[-3.0, 3.0]$ \\
+\quad Spatial Interval ($[x_{\text{min}}, x_{\text{max}}]$) & $[-0.5, 2.0]$ \\
 \midrule
 \multicolumn{2}{l}{\textit{Probability of Default Threshold}} \\
 \quad Threshold ($K$) & $0.0$ \\
 \midrule
 \multicolumn{2}{l}{\textit{Training Data Sizes}} \\
-\quad Number of Residual Points ($N_r$) & $20000$ \\
+\quad Number of Residual Points ($N_r$) & $15000$ \\
 \quad Number of Terminal Condition Points ($N_T$) & $500$ \\
 \quad Number of Boundary Condition Points ($N_b$) & $500$ \\
+\quad Number of Monte Carlo Anchor Points ($N_{mc}$) & $1000$ \\
 \midrule
 \multicolumn{2}{l}{\textit{PINN Architecture}} \\
 \quad Hidden Layers & 6 \\
-\quad Neurons per Hidden Layer & 25 \\
+\quad Neurons per Hidden Layer & 30 \\
 \quad Hidden Activation & Tanh \\
 \quad Output Activation & Sigmoid \\
 \midrule
 \multicolumn{2}{l}{\textit{Monte Carlo Integration}} \\
-\quad Number of Samples per Point ($N_{\text{mc}}$) & $100$ \\
+\quad Number of Integration Steps & $100$ \\
+\quad Integration Width (in std deviations) & $5.0$ \\
 \midrule
 \multicolumn{2}{l}{\textit{Training Parameters}} \\
 \quad Optimizer & Adam \\
-\quad Learning Rate ($\eta$) & $0.001$ \\
-\quad Number of Epochs & $5000$ \\
+\quad Learning Rate ($\eta$) & $0.0002$ \\
+\quad Number of Epochs & $40000$ \\
+\quad Early Stop Threshold & $0.000099$ \\
 \bottomrule
 \end{tabular}
 \end{table}
