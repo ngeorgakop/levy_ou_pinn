@@ -67,6 +67,8 @@ env/
 
 # Generated files
 *.pth
+!*.pt
+!levy_ou_pinn_model.pth
 *.png
 *.txt
 *.csv
